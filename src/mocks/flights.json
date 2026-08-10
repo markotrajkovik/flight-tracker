@@ -1,0 +1,62 @@
+[
+  {
+    "icao24": "a835af",
+    "callsign": "DAL123",
+    "originCountry": "United States",
+    "latitude": 40.6413,
+    "longitude": -73.7781,
+    "altitude": 10668,
+    "velocity": 240,
+    "heading": 85,
+    "verticalRate": 0,
+    "onGround": false
+  },
+  {
+    "icao24": "400a0c",
+    "callsign": "BAW178",
+    "originCountry": "United Kingdom",
+    "latitude": 51.47,
+    "longitude": -0.4543,
+    "altitude": 11277,
+    "velocity": 250,
+    "heading": 270,
+    "verticalRate": 1.5,
+    "onGround": false
+  },
+  {
+    "icao24": "3c6444",
+    "callsign": "DLH400",
+    "originCountry": "Germany",
+    "latitude": 50.0379,
+    "longitude": 8.5622,
+    "altitude": 0,
+    "velocity": 0,
+    "heading": 180,
+    "verticalRate": 0,
+    "onGround": true
+  },
+  {
+    "icao24": "394a65",
+    "callsign": "AFR006",
+    "originCountry": "France",
+    "latitude": 49.0097,
+    "longitude": 2.5479,
+    "altitude": 3500,
+    "velocity": 180,
+    "heading": 45,
+    "verticalRate": -4.2,
+    "onGround": false
+  },
+  {
+    "icao24": "7c6db2",
+    "callsign": "QFA1",
+    "originCountry": "Australia",
+    "latitude": -33.9399,
+    "longitude": 151.1753,
+    "altitude": 9800,
+    "velocity": 230,
+    "heading": 310,
+    "verticalRate": 0,
+    "onGround": false
+  }
+]

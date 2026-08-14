@@ -1,5 +1,6 @@
 import { useFlightEngine } from "./hooks/useFlightEngine";
 import "./App.css";
+import { MapRenderer } from "./components/MapRenderer";
 
 export default function App() {
   const { flights, searchTerm, setSearchTerm, isLoading } = useFlightEngine();
@@ -12,7 +13,7 @@ export default function App() {
         style={{ height: "56px" }}
       >
         <span className="navbar-brand mb-0 h1 d-flex align-items-center gap-2">
-          ✈️ FlightTracker Pro
+          FlightTrackerVeriGud
         </span>
         <div className="d-flex align-items-center gap-2">
           <button className="btn btn-outline-light btn-sm" title="Settings">
@@ -34,9 +35,9 @@ export default function App() {
           overflow: "hidden",
         }}
       >
-        {/* Leaflet Map Placeholder */}
-        <div className="map-bg bg-secondary d-flex justify-content-center align-items-center text-white h-100 w-100">
-          <p className="lead m-0">Leaflet Map Placeholder</p>
+        {/* Leaflet Map  */}
+        <div className="map-bg h-100 w-100">
+          <MapRenderer flights={flights} />
         </div>
 
         {/* Floating Overlay Layer */}

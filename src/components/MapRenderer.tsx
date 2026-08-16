@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import "leaflet/dist/leaflet.css";
 import {
   MapContainer,
@@ -11,6 +11,8 @@ import L from "leaflet";
 import type { ProcessedFlight } from "../types/flights";
 import { createAirplaneIcon } from "../utils/createAirplaneIcon";
 import { MapClickHandler } from "./MapClickHandler";
+import { MapBoundsTracker } from "./MapBoundsTracker";
+import { getOpenSkyToken } from "../utils/getOpenSkyToken";
 
 type PathPoint = [number, number, number, number, number, boolean];
 
@@ -34,6 +36,7 @@ const WORLD_BOUNDS: L.LatLngBoundsExpression = [
 export function MapRenderer({ flights }: MapRendererProps) {
   const [selectedIcao24, setSelectedIcao24] = useState<string | null>(null);
   const [routePath, setRoutePath] = useState<[number, number][]>([]);
+  const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
 
   const handleDeselect = () => {
     setSelectedIcao24(null);
@@ -50,7 +53,15 @@ export function MapRenderer({ flights }: MapRendererProps) {
     setSelectedIcao24(icao24); //not selected, select it
 
     try {
-      const response = await fetch("/mocks/waypoints.json");
+      const token = await getOpenSkyToken();
+
+      const response = await fetch(`/api/tracks/all?icao24=${icao24}&time=0`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("Waypoint fetch has been made");
       if (!response.ok) throw new Error("Failed to load track data");
 
       const data: WaypointsResponse = await response.json();
@@ -66,6 +77,21 @@ export function MapRenderer({ flights }: MapRendererProps) {
       setRoutePath([]);
     }
   };
+  const visibleFlights = useMemo(() => {
+    if (!mapBounds) {
+      return [...flights].sort((a, b) => b.velocity - a.velocity).slice(0, 100);
+    }
+
+    const inView = flights.filter((flight) =>
+      mapBounds.contains([flight.latitude, flight.longitude]),
+    );
+
+    if (inView.length <= 100) {
+      return inView;
+    }
+
+    return inView.sort((a, b) => b.velocity - a.velocity).slice(0, 100);
+  }, [flights, mapBounds]);
 
   return (
     <MapContainer
@@ -78,6 +104,7 @@ export function MapRenderer({ flights }: MapRendererProps) {
       maxBoundsViscosity={1.0}
     >
       <MapClickHandler onMapClick={handleDeselect} />
+      <MapBoundsTracker onBoundsChange={setMapBounds} />
 
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -96,7 +123,7 @@ export function MapRenderer({ flights }: MapRendererProps) {
         />
       )}
 
-      {flights.map((flight) => (
+      {visibleFlights.map((flight) => (
         <Marker
           key={flight.icao24}
           position={[flight.latitude, flight.longitude]}

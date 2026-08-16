@@ -9,4 +9,6 @@ export interface ProcessedFlight {
   heading: number;
   verticalRate: number;
   onGround: boolean;
+  source: number;
+  category: number;
 }

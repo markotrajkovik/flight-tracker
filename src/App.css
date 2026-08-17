@@ -14,4 +14,100 @@
   backdrop-filter: blur(4px);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease-in-out;
+}
+
+/* Rotating Collapse Arrow */
+.collapse-arrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.collapse-arrow.collapsed {
+  transform: rotate(-180deg);
+}
+
+/* Info Icon Styling */
+.info-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-style: italic;
+  font-family: Georgia, serif;
+}
+
+/* Dual-Thumb Range Slider Container */
+.range-slider-container {
+  position: relative;
+  height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.range-slider-track-bg {
+  position: absolute;
+  width: 100%;
+  height: 6px;
+  background-color: #e9ecef;
+  border-radius: 3px;
+  z-index: 1;
+}
+
+.range-slider-track-fill {
+  position: absolute;
+  height: 6px;
+  background-color: #0d6efd;
+  border-radius: 3px;
+  z-index: 2;
+}
+
+.range-slider-input {
+  position: absolute;
+  width: 100%;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 0;
+  outline: none;
+  z-index: 3;
+  margin: 0;
+}
+
+/* Webkit Thumbs */
+.range-slider-input::-webkit-slider-thumb {
+  pointer-events: auto;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0d6efd;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+}
+
+.range-slider-input::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+/* Firefox Thumbs */
+.range-slider-input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0d6efd;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+}
+
+.range-slider-input::-moz-range-thumb:hover {
+  transform: scale(1.15);
 }

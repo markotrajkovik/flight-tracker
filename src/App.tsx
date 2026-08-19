@@ -4,23 +4,48 @@ import "./App.css";
 import { MapRenderer } from "./components/MapRenderer";
 import { Collapse } from "react-bootstrap";
 
+export interface Flight {
+  icao24: string;
+  callsign: string;
+  originCountry: string;
+  latitude: number;
+  longitude: number;
+  altitude: number;
+  velocity: number;
+  heading: number;
+  verticalRate: number;
+  onGround: boolean;
+  source: number;
+}
+
 export default function App() {
-  const { flights, searchTerm, setSearchTerm, isLoading } = useFlightEngine();
+  const {
+    flights,
+    searchTerm,
+    setSearchTerm,
+    isLoading,
+    originCountry,
+    setOriginCountry,
+    minAlt,
+    setMinAlt,
+    maxAlt,
+    setMaxAlt,
+    minVel,
+    setMinVel,
+    maxVel,
+    setMaxVel,
+    showGround,
+    setShowGround,
+  } = useFlightEngine();
 
-  // Panel Collapse State
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(false);
+  const [isDetailsCollapsed, setIsDetailsCollapsed] = useState(false);
 
-  // Filter States (Ready for filtering logic)
-  const [originCountry, setOriginCountry] = useState("");
-  const [minAlt, setMinAlt] = useState(0);
-  const [maxAlt, setMaxAlt] = useState(15000);
-  const [minVel, setMinVel] = useState(0);
-  const [maxVel, setMaxVel] = useState(300);
-  const [showGround, setShowGround] = useState(true);
+  const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
 
   // Slider Limits
   const ALT_MAX = 15000;
-  const VEL_MAX = 300;
+  const VEL_MAX = 400;
 
   return (
     <div className="d-flex flex-column vh-100 bg-light">
@@ -54,7 +79,7 @@ export default function App() {
       >
         {/* Leaflet Map */}
         <div className="map-bg h-100 w-100">
-          <MapRenderer flights={flights} />
+          <MapRenderer flights={flights} onSelectFlight={setSelectedFlight} />
         </div>
 
         {/* Floating Overlay Layer */}
@@ -77,7 +102,7 @@ export default function App() {
                 </span>
               </div>
               <button
-                className="btn btn-sm p-0 border-0 shadow-none text-dark "
+                className="btn btn-sm p-0 border-0 shadow-none text-dark"
                 onClick={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
                 aria-expanded={!isFiltersCollapsed}
                 aria-controls="filter-collapse"
@@ -241,38 +266,148 @@ export default function App() {
             </Collapse>
           </div>
 
-          {/* Right Stack: Flight Details & Telemetry */}
+          {/* Right Panel: Flight Monitor */}
           <div
-            className="d-flex flex-column gap-3"
+            className="floating-panel p-3 align-self-start"
             style={{ width: "100%", maxWidth: "360px" }}
           >
-            {/* Top-Right Panel */}
-            <div className="floating-panel p-3">
-              <h6 className="fw-bold mb-2">Flight Details</h6>
-              {isLoading ? (
-                <div
-                  className="spinner-border spinner-border-sm text-primary"
-                  role="status"
-                />
-              ) : (
-                <div className="small">
-                  <p className="mb-1">
-                    <strong>Active Flights:</strong> {flights.length}
-                  </p>
-                  <p className="mb-0 text-muted">
-                    Click an aircraft on the map to view details.
-                  </p>
-                </div>
-              )}
+            {/* Header: Title & Collapsible Arrow */}
+            <div className="d-flex align-items-center justify-content-between">
+              <h6 className="fw-bold mb-0">Flight Monitor</h6>
+              <button
+                className="btn btn-sm p-0 border-0 shadow-none text-dark"
+                onClick={() => setIsDetailsCollapsed(!isDetailsCollapsed)}
+                aria-expanded={!isDetailsCollapsed}
+                aria-controls="details-collapse"
+              >
+                <span
+                  className={`collapse-arrow ${
+                    isDetailsCollapsed ? "collapsed" : ""
+                  }`}
+                >
+                  ▼
+                </span>
+              </button>
             </div>
 
-            {/* Bottom-Right Panel */}
-            <div className="floating-panel p-3">
-              <h6 className="fw-bold mb-2">Telemetry</h6>
-              <div className="bg-light rounded border p-3 text-center text-muted small">
-                Chart Placeholder
+            {/* Collapsible Content */}
+            <Collapse in={!isDetailsCollapsed}>
+              <div id="details-collapse">
+                <div className="mt-3">
+                  {isLoading ? (
+                    <div className="d-flex justify-content-center py-2">
+                      <div
+                        className="spinner-border spinner-border-sm text-primary"
+                        role="status"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      {/* Active Flights Counter */}
+                      <div className="small mb-3 pb-2 border-bottom d-flex justify-content-between align-items-center">
+                        <span className="text-muted">Active Flights:</span>
+                        <span className="badge bg-primary rounded-pill font-monospace">
+                          {flights.length}
+                        </span>
+                      </div>
+
+                      {/* Selected Flight Info or Placeholder */}
+                      {selectedFlight ? (
+                        <div className="flight-info-details small">
+                          <div className="d-flex justify-content-between align-items-center mb-2">
+                            <span className="fw-bold fs-6">
+                              {selectedFlight.callsign || "N/A"}
+                            </span>
+                            <span className="badge bg-secondary font-monospace">
+                              {selectedFlight.icao24?.toUpperCase()}
+                            </span>
+                          </div>
+
+                          <ul className="list-group list-group-flush border-top border-bottom mb-3">
+                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
+                              <span className="text-muted">
+                                Origin Country:
+                              </span>
+                              <span className="fw-semibold text-end">
+                                {selectedFlight.originCountry || "Unknown"}
+                              </span>
+                            </li>
+                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
+                              <span className="text-muted">Coordinates:</span>
+                              <span className="font-monospace">
+                                {selectedFlight.latitude?.toFixed(4)}°,{" "}
+                                {selectedFlight.longitude?.toFixed(4)}°
+                              </span>
+                            </li>
+                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
+                              <span className="text-muted">Altitude:</span>
+                              <span className="font-monospace">
+                                {selectedFlight.altitude != null
+                                  ? `${selectedFlight.altitude.toLocaleString()} m`
+                                  : "N/A"}
+                              </span>
+                            </li>
+                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
+                              <span className="text-muted">Velocity:</span>
+                              <span className="font-monospace">
+                                {selectedFlight.velocity != null
+                                  ? `${selectedFlight.velocity} m/s`
+                                  : "N/A"}
+                              </span>
+                            </li>
+                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
+                              <span className="text-muted">Heading:</span>
+                              <span className="font-monospace">
+                                {selectedFlight.heading != null
+                                  ? `${selectedFlight.heading}°`
+                                  : "N/A"}
+                              </span>
+                            </li>
+                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
+                              <span className="text-muted">Vertical Rate:</span>
+                              <span className="font-monospace">
+                                {selectedFlight.verticalRate != null
+                                  ? `${selectedFlight.verticalRate} m/s`
+                                  : "N/A"}
+                              </span>
+                            </li>
+                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
+                              <span className="text-muted">Status:</span>
+                              <span
+                                className={`badge ${
+                                  selectedFlight.onGround
+                                    ? "bg-warning text-dark"
+                                    : "bg-success"
+                                }`}
+                              >
+                                {selectedFlight.onGround
+                                  ? "On Ground"
+                                  : "In Flight"}
+                              </span>
+                            </li>
+                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
+                              <span className="text-muted">
+                                Position Source:
+                              </span>
+                              <span className="font-monospace">
+                                {selectedFlight.source}
+                              </span>
+                            </li>
+                          </ul>
+                        </div>
+                      ) : (
+                        <div className="bg-light rounded border p-3 text-center text-muted small">
+                          <p className="mb-0">
+                            Click an aircraft on the map to view detailed flight
+                            parameters.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
+            </Collapse>
           </div>
         </div>
       </div>

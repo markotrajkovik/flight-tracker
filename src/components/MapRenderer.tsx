@@ -26,6 +26,7 @@ interface WaypointsResponse {
 
 interface MapRendererProps {
   flights: ProcessedFlight[];
+  onSelectFlight: (selectedFlight: ProcessedFlight | null) => void;
 }
 
 const WORLD_BOUNDS: L.LatLngBoundsExpression = [
@@ -33,7 +34,7 @@ const WORLD_BOUNDS: L.LatLngBoundsExpression = [
   [85, 180], // top right
 ];
 
-export function MapRenderer({ flights }: MapRendererProps) {
+export function MapRenderer({ flights, onSelectFlight }: MapRendererProps) {
   const [selectedIcao24, setSelectedIcao24] = useState<string | null>(null);
   const [routePath, setRoutePath] = useState<[number, number][]>([]);
   const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
@@ -41,25 +42,30 @@ export function MapRenderer({ flights }: MapRendererProps) {
   const handleDeselect = () => {
     setSelectedIcao24(null);
     setRoutePath([]);
+    onSelectFlight(null);
   };
 
-  const handleMarkerClick = async (icao24: string) => {
-    if (selectedIcao24 === icao24) {
+  const handleMarkerClick = async (flight: ProcessedFlight) => {
+    if (selectedIcao24 === flight.icao24) {
       // deselect already clicked marker
       handleDeselect();
       return;
     }
 
-    setSelectedIcao24(icao24); //not selected, select it
+    setSelectedIcao24(flight.icao24); //not selected, select it
+    onSelectFlight(flight);
 
     try {
       const token = await getOpenSkyToken();
 
-      const response = await fetch(`/api/tracks/all?icao24=${icao24}&time=0`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `/api/tracks/all?icao24=${flight.icao24}&time=0`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       console.log("Waypoint fetch has been made");
       if (!response.ok) throw new Error("Failed to load track data");
@@ -131,7 +137,7 @@ export function MapRenderer({ flights }: MapRendererProps) {
           eventHandlers={{
             click: (e) => {
               L.DomEvent.stopPropagation(e.originalEvent);
-              handleMarkerClick(flight.icao24);
+              handleMarkerClick(flight);
             },
           }}
         >
@@ -141,10 +147,6 @@ export function MapRenderer({ flights }: MapRendererProps) {
               <br />
               <strong>Country:</strong> {flight.originCountry}
               <br />
-              <strong>Altitude:</strong> {flight.altitude} m<br />
-              <strong>Speed:</strong> {flight.velocity} m/s
-              <br />
-              <strong>Heading:</strong> {flight.heading}°
             </div>
           </Popup>
         </Marker>

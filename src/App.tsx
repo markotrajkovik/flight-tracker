@@ -3,6 +3,7 @@ import { useFlightEngine } from "./hooks/useFlightEngine";
 import "./App.css";
 import { MapRenderer } from "./components/MapRenderer";
 import { Collapse } from "react-bootstrap";
+import type { ProcessedFlight } from "./types/flights";
 
 export interface Flight {
   icao24: string;
@@ -16,6 +17,11 @@ export interface Flight {
   verticalRate: number;
   onGround: boolean;
   source: number;
+}
+
+export interface RecentFlightItem {
+  flight: ProcessedFlight;
+  timestamp: string;
 }
 
 export default function App() {
@@ -41,11 +47,42 @@ export default function App() {
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(false);
   const [isDetailsCollapsed, setIsDetailsCollapsed] = useState(false);
 
-  const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
+  const [activeTab, setActiveTab] = useState<"details" | "recents">("details");
+  const [selectedFlight, setSelectedFlight] = useState<ProcessedFlight | null>(
+    null,
+  );
+  const [flyToFlight, setFlyToFlight] = useState<ProcessedFlight | null>(null);
+  const [recentFlights, setRecentFlights] = useState<RecentFlightItem[]>([]);
 
   // Slider Limits
   const ALT_MAX = 15000;
   const VEL_MAX = 400;
+
+  const addToRecents = (flight: ProcessedFlight) => {
+    const timeString = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+
+    setRecentFlights((prev) => {
+      const filtered = prev.filter(
+        (item) => item.flight.icao24 !== flight.icao24,
+      );
+      return [{ flight, timestamp: timeString }, ...filtered].slice(0, 5);
+    });
+  };
+
+  const handleSelectFromMap = (flight: ProcessedFlight | null) => {
+    setSelectedFlight(flight);
+    setFlyToFlight(null);
+  };
+
+  const handleSelectFromRecents = (flight: ProcessedFlight) => {
+    setSelectedFlight(flight);
+    setFlyToFlight(flight);
+    addToRecents(flight);
+  };
 
   return (
     <div className="d-flex flex-column vh-100 bg-light">
@@ -79,7 +116,12 @@ export default function App() {
       >
         {/* Leaflet Map */}
         <div className="map-bg h-100 w-100">
-          <MapRenderer flights={flights} onSelectFlight={setSelectedFlight} />
+          <MapRenderer
+            flights={flights}
+            selectedFlight={selectedFlight}
+            flyToFlight={flyToFlight}
+            onSelectFlight={handleSelectFromMap}
+          />
         </div>
 
         {/* Floating Overlay Layer */}
@@ -89,7 +131,6 @@ export default function App() {
             className="floating-panel p-3 mb-3 mb-md-0 align-self-start"
             style={{ width: "100%", maxWidth: "320px" }}
           >
-            {/* Header: Title, Hover Info Icon & Collapsible Arrow */}
             <div className="d-flex align-items-center justify-content-between">
               <div className="d-flex align-items-center gap-2">
                 <h6 className="fw-bold mb-0">Filters</h6>
@@ -117,7 +158,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* Collapsible Content */}
             <Collapse in={!isFiltersCollapsed}>
               <div id="filter-collapse">
                 <div className="mt-3">
@@ -149,7 +189,7 @@ export default function App() {
                     />
                   </div>
 
-                  {/* 3. Min-Max Double Range Slider: Altitude */}
+                  {/* 3. Altitude Slider */}
                   <div className="mb-3">
                     <div className="d-flex justify-content-between align-items-center mb-1">
                       <label className="form-label small text-muted font-monospace mb-0">
@@ -197,7 +237,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* 4. Min-Max Double Range Slider: Velocity */}
+                  {/* 4. Velocity Slider */}
                   <div className="mb-3">
                     <div className="d-flex justify-content-between align-items-center mb-1">
                       <label className="form-label small text-muted font-monospace mb-0">
@@ -266,13 +306,12 @@ export default function App() {
             </Collapse>
           </div>
 
-          {/* Right Panel: Flight Monitor */}
+          {/* Right Panel: Flight Monitor with Details & Recent Tabs */}
           <div
             className="floating-panel p-3 align-self-start"
-            style={{ width: "100%", maxWidth: "360px" }}
+            style={{ width: "100%", maxWidth: "380px" }}
           >
-            {/* Header: Title & Collapsible Arrow */}
-            <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center justify-content-between mb-2">
               <h6 className="fw-bold mb-0">Flight Monitor</h6>
               <button
                 className="btn btn-sm p-0 border-0 shadow-none text-dark"
@@ -290,20 +329,49 @@ export default function App() {
               </button>
             </div>
 
-            {/* Collapsible Content */}
             <Collapse in={!isDetailsCollapsed}>
               <div id="details-collapse">
-                <div className="mt-3">
+                {/* Tab Navigation Headers */}
+                <ul className="nav nav-tabs nav-fill mb-3 small">
+                  <li className="nav-item">
+                    <button
+                      type="button"
+                      className={`nav-link py-1 border-0 ${
+                        activeTab === "details"
+                          ? "active fw-bold border-bottom border-primary border-2"
+                          : "text-muted"
+                      }`}
+                      onClick={() => setActiveTab("details")}
+                    >
+                      Details
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button
+                      type="button"
+                      className={`nav-link py-1 border-0 ${
+                        activeTab === "recents"
+                          ? "active fw-bold border-bottom border-primary border-2"
+                          : "text-muted"
+                      }`}
+                      onClick={() => setActiveTab("recents")}
+                    >
+                      Recent Flights ({recentFlights.length})
+                    </button>
+                  </li>
+                </ul>
+
+                <div className="tab-content">
                   {isLoading ? (
-                    <div className="d-flex justify-content-center py-2">
+                    <div className="d-flex justify-content-center py-3">
                       <div
                         className="spinner-border spinner-border-sm text-primary"
                         role="status"
                       />
                     </div>
-                  ) : (
+                  ) : activeTab === "details" ? (
+                    /* TAB 1: DETAILS PANEL */
                     <>
-                      {/* Active Flights Counter */}
                       <div className="small mb-3 pb-2 border-bottom d-flex justify-content-between align-items-center">
                         <span className="text-muted">Active Flights:</span>
                         <span className="badge bg-primary rounded-pill font-monospace">
@@ -311,7 +379,6 @@ export default function App() {
                         </span>
                       </div>
 
-                      {/* Selected Flight Info or Placeholder */}
                       {selectedFlight ? (
                         <div className="flight-info-details small">
                           <div className="d-flex justify-content-between align-items-center mb-2">
@@ -385,14 +452,6 @@ export default function App() {
                                   : "In Flight"}
                               </span>
                             </li>
-                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
-                              <span className="text-muted">
-                                Position Source:
-                              </span>
-                              <span className="font-monospace">
-                                {selectedFlight.source}
-                              </span>
-                            </li>
                           </ul>
                         </div>
                       ) : (
@@ -404,6 +463,51 @@ export default function App() {
                         </div>
                       )}
                     </>
+                  ) : (
+                    /* TAB 2: RECENT FLIGHTS TABLE */
+                    <div className="table-responsive small">
+                      {recentFlights.length > 0 ? (
+                        <table className="table table-hover table-sm align-middle mb-0">
+                          <thead className="table-light">
+                            <tr>
+                              <th>ICAO24</th>
+                              <th>Country</th>
+                              <th className="text-end">Time</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {recentFlights.map(({ flight, timestamp }) => {
+                              const isSelected =
+                                selectedFlight?.icao24 === flight.icao24;
+                              return (
+                                <tr
+                                  key={flight.icao24}
+                                  style={{ cursor: "pointer" }}
+                                  className={
+                                    isSelected ? "table-active fw-bold" : ""
+                                  }
+                                  onClick={() =>
+                                    handleSelectFromRecents(flight)
+                                  }
+                                >
+                                  <td className="font-monospace text-primary fw-bold">
+                                    {flight.icao24.toUpperCase()}
+                                  </td>
+                                  <td>{flight.originCountry || "Unknown"}</td>
+                                  <td className="text-end font-monospace text-muted">
+                                    {timestamp}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div className="bg-light rounded border p-3 text-center text-muted small">
+                          <p className="mb-0">No recently selected flights.</p>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

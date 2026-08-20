@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import "leaflet/dist/leaflet.css";
 import {
   MapContainer,
@@ -6,6 +6,7 @@ import {
   Marker,
   Polyline,
   Popup,
+  useMap,
 } from "react-leaflet";
 import L from "leaflet";
 import type { ProcessedFlight } from "../types/flights";
@@ -26,6 +27,8 @@ interface WaypointsResponse {
 
 interface MapRendererProps {
   flights: ProcessedFlight[];
+  selectedFlight: ProcessedFlight | null;
+  flyToFlight: ProcessedFlight | null;
   onSelectFlight: (selectedFlight: ProcessedFlight | null) => void;
 }
 
@@ -34,55 +37,89 @@ const WORLD_BOUNDS: L.LatLngBoundsExpression = [
   [85, 180], // top right
 ];
 
-export function MapRenderer({ flights, onSelectFlight }: MapRendererProps) {
-  const [selectedIcao24, setSelectedIcao24] = useState<string | null>(null);
+function MapFlyController({
+  targetFlight,
+}: {
+  targetFlight: ProcessedFlight | null;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (targetFlight) {
+      map.flyTo([targetFlight.latitude, targetFlight.longitude], 11, {
+        duration: 0.6,
+      });
+    }
+  }, [targetFlight, map]);
+
+  return null;
+}
+
+export function MapRenderer({
+  flights,
+  selectedFlight,
+  flyToFlight,
+  onSelectFlight,
+}: MapRendererProps) {
   const [routePath, setRoutePath] = useState<[number, number][]>([]);
   const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
 
-  const handleDeselect = () => {
-    setSelectedIcao24(null);
-    setRoutePath([]);
-    onSelectFlight(null);
-  };
-
-  const handleMarkerClick = async (flight: ProcessedFlight) => {
-    if (selectedIcao24 === flight.icao24) {
-      // deselect already clicked marker
-      handleDeselect();
+  useEffect(() => {
+    if (!selectedFlight) {
+      setRoutePath([]);
       return;
     }
 
-    setSelectedIcao24(flight.icao24); //not selected, select it
-    onSelectFlight(flight);
+    let isMounted = true;
 
-    try {
-      const token = await getOpenSkyToken();
-
-      const response = await fetch(
-        `/api/tracks/all?icao24=${flight.icao24}&time=0`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
+    async function fetchWaypoints() {
+      try {
+        const token = await getOpenSkyToken();
+        const response = await fetch(
+          `/api/tracks/all?icao24=${selectedFlight!.icao24}&time=0`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           },
-        },
-      );
+        );
 
-      console.log("Waypoint fetch has been made");
-      if (!response.ok) throw new Error("Failed to load track data");
+        if (!response.ok) throw new Error("Failed to load track data");
 
-      const data: WaypointsResponse = await response.json();
+        const data: WaypointsResponse = await response.json();
+        const latLngPositions: [number, number][] = data.path.map((point) => [
+          point[1],
+          point[2],
+        ]);
 
-      const latLngPositions: [number, number][] = data.path.map((point) => [
-        point[1],
-        point[2],
-      ]);
+        if (isMounted) {
+          setRoutePath(latLngPositions);
+        }
+      } catch (error) {
+        console.error("Error loading flight path:", error);
+        if (isMounted) setRoutePath([]);
+      }
+    }
 
-      setRoutePath(latLngPositions);
-    } catch (error) {
-      console.error("Error loading flight path:", error);
-      setRoutePath([]);
+    fetchWaypoints();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedFlight?.icao24]);
+
+  const handleDeselect = () => {
+    onSelectFlight(null);
+  };
+
+  const handleMarkerClick = (flight: ProcessedFlight) => {
+    if (selectedFlight?.icao24 === flight.icao24) {
+      handleDeselect();
+    } else {
+      onSelectFlight(flight);
     }
   };
+
   const visibleFlights = useMemo(() => {
     if (!mapBounds) {
       return [...flights].sort((a, b) => b.velocity - a.velocity).slice(0, 100);
@@ -109,6 +146,7 @@ export function MapRenderer({ flights, onSelectFlight }: MapRendererProps) {
       maxBounds={WORLD_BOUNDS}
       maxBoundsViscosity={1.0}
     >
+      <MapFlyController targetFlight={flyToFlight} />
       <MapClickHandler onMapClick={handleDeselect} />
       <MapBoundsTracker onBoundsChange={setMapBounds} />
 
@@ -118,7 +156,7 @@ export function MapRenderer({ flights, onSelectFlight }: MapRendererProps) {
         keepBuffer={8}
       />
 
-      {selectedIcao24 && routePath.length > 0 && (
+      {selectedFlight && routePath.length > 0 && (
         <Polyline
           positions={routePath}
           pathOptions={{

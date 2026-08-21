@@ -138,8 +138,8 @@ export function MapRenderer({
 
   return (
     <MapContainer
-      center={[36.0, -5.9]}
-      zoom={6}
+      center={[41.6, 21.7]}
+      zoom={7}
       style={{ height: "100%", width: "100%" }}
       zoomControl={false}
       attributionControl={false}
@@ -151,18 +151,18 @@ export function MapRenderer({
       <MapBoundsTracker onBoundsChange={setMapBounds} />
 
       <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        keepBuffer={8}
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        detectRetina={true}
       />
 
       {selectedFlight && routePath.length > 0 && (
         <Polyline
           positions={routePath}
           pathOptions={{
-            color: "#e82d07",
+            color: "#cfc33a",
             weight: 3,
-            dashArray: "6, 6",
+            dashArray: "15, 6",
           }}
         />
       )}
@@ -179,12 +179,18 @@ export function MapRenderer({
             },
           }}
         >
-          <Popup>
-            <div style={{ color: "#000" }}>
-              <strong>Callsign:</strong> {flight.callsign || "N/A"}
-              <br />
-              <strong>Country:</strong> {flight.originCountry}
-              <br />
+          <Popup className="lounge-popup">
+            <div className="small">
+              <div className="d-flex justify-content-between gap-3 my-1">
+                <span className="lounge-label fw-bold">Callsign:</span>
+                <span className="lounge-value">{flight.callsign}</span>
+              </div>
+              <div className="d-flex justify-content-between gap-3 my-1">
+                <span className="lounge-label fw-bold">Country:</span>
+                <span className="lounge-value">
+                  {flight.originCountry || "Unknown"}
+                </span>
+              </div>
             </div>
           </Popup>
         </Marker>

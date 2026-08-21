@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFlightEngine } from "./hooks/useFlightEngine";
 import "./App.css";
 import { MapRenderer } from "./components/MapRenderer";
@@ -54,6 +54,14 @@ export default function App() {
   const [flyToFlight, setFlyToFlight] = useState<ProcessedFlight | null>(null);
   const [recentFlights, setRecentFlights] = useState<RecentFlightItem[]>([]);
 
+  // Real-time clock state
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Slider Limits
   const ALT_MAX = 15000;
   const VEL_MAX = 400;
@@ -76,6 +84,9 @@ export default function App() {
   const handleSelectFromMap = (flight: ProcessedFlight | null) => {
     setSelectedFlight(flight);
     setFlyToFlight(null);
+    if (flight) {
+      addToRecents(flight);
+    }
   };
 
   const handleSelectFromRecents = (flight: ProcessedFlight) => {
@@ -85,22 +96,26 @@ export default function App() {
   };
 
   return (
-    <div className="d-flex flex-column vh-100 bg-light">
+    <div className="d-flex flex-column vh-100 lounge-app">
       {/* Top Navbar */}
-      <nav
-        className="navbar navbar-dark bg-dark px-3 shadow-sm"
-        style={{ height: "56px" }}
-      >
-        <span className="navbar-brand mb-0 h1 d-flex align-items-center gap-2">
-          FlightTrackerVeriGud
-        </span>
-        <div className="d-flex align-items-center gap-2">
-          <button className="btn btn-outline-light btn-sm" title="Settings">
-            ⚙️
-          </button>
-          <button className="btn btn-outline-light btn-sm" title="Refresh">
-            🔄
-          </button>
+      <nav className="lounge-navbar px-4 shadow-sm" style={{ height: "56px" }}>
+        <div className="nav-left">
+          <span className="mb-0 h5">FlightTrackerVeriGud</span>
+        </div>
+        <div className="nav-center clock-text">
+          {currentTime.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })}
+        </div>
+        <div className="nav-right date-text lounge-label">
+          {currentTime.toLocaleDateString(undefined, {
+            weekday: "short",
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })}
         </div>
       </nav>
 
@@ -125,33 +140,31 @@ export default function App() {
         </div>
 
         {/* Floating Overlay Layer */}
-        <div className="map-overlay p-3 d-flex flex-column flex-md-row justify-content-between">
+        <div className="map-overlay p-4 d-flex flex-column flex-md-row justify-content-between">
           {/* Left Panel: Filters */}
           <div
-            className="floating-panel p-3 mb-3 mb-md-0 align-self-start"
+            className="lounge-panel p-3 mb-3 mb-md-0 align-self-start"
             style={{ width: "100%", maxWidth: "320px" }}
           >
-            <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center justify-content-between mb-2">
               <div className="d-flex align-items-center gap-2">
-                <h6 className="fw-bold mb-0">Filters</h6>
+                <h6 className="mb-0 panel-title">Filters</h6>
                 <span
-                  className="info-icon badge rounded-pill bg-secondary"
+                  className="info-icon badge rounded-pill"
                   title="Filter visible aircraft by callsign, origin country, altitude range, velocity range, or ground status."
                   style={{ cursor: "help", fontSize: "0.7rem" }}
                 >
-                  i
+                  ?
                 </span>
               </div>
               <button
-                className="btn btn-sm p-0 border-0 shadow-none text-dark"
+                className="btn btn-sm p-0 border-0 shadow-none lounge-text"
                 onClick={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
                 aria-expanded={!isFiltersCollapsed}
                 aria-controls="filter-collapse"
               >
                 <span
-                  className={`collapse-arrow ${
-                    isFiltersCollapsed ? "collapsed" : ""
-                  }`}
+                  className={`collapse-arrow ${isFiltersCollapsed ? "collapsed" : ""}`}
                 >
                   ▼
                 </span>
@@ -160,15 +173,15 @@ export default function App() {
 
             <Collapse in={!isFiltersCollapsed}>
               <div id="filter-collapse">
-                <div className="mt-3">
+                <div className="mt-2">
                   {/* 1. Search Callsign */}
                   <div className="mb-3">
-                    <label className="form-label small text-muted mb-1">
+                    <label className="form-label small mb-1 lounge-label">
                       Search Callsign
                     </label>
                     <input
                       type="text"
-                      className="form-control form-control-sm"
+                      className="form-control form-control-sm lounge-input"
                       placeholder="e.g. DAL123..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -177,12 +190,12 @@ export default function App() {
 
                   {/* 2. Search Origin Country */}
                   <div className="mb-3">
-                    <label className="form-label small text-muted mb-1">
-                      Origin Country
+                    <label className="form-label small mb-1 lounge-label">
+                      Search Origin Country
                     </label>
                     <input
                       type="text"
-                      className="form-control form-control-sm"
+                      className="form-control form-control-sm lounge-input"
                       placeholder="e.g. Germany..."
                       value={originCountry}
                       onChange={(e) => setOriginCountry(e.target.value)}
@@ -192,10 +205,10 @@ export default function App() {
                   {/* 3. Altitude Slider */}
                   <div className="mb-3">
                     <div className="d-flex justify-content-between align-items-center mb-1">
-                      <label className="form-label small text-muted font-monospace mb-0">
+                      <label className="form-label small mb-0 lounge-label">
                         Altitude
                       </label>
-                      <span className="small text-muted font-monospace">
+                      <span className="small lounge-value">
                         {minAlt.toLocaleString()} - {maxAlt.toLocaleString()} m
                       </span>
                     </div>
@@ -240,10 +253,10 @@ export default function App() {
                   {/* 4. Velocity Slider */}
                   <div className="mb-3">
                     <div className="d-flex justify-content-between align-items-center mb-1">
-                      <label className="form-label small text-muted font-monospace mb-0">
+                      <label className="form-label small mb-0 lounge-label">
                         Velocity
                       </label>
-                      <span className="small text-muted font-monospace">
+                      <span className="small lounge-value">
                         {minVel} - {maxVel} m/s
                       </span>
                     </div>
@@ -286,16 +299,16 @@ export default function App() {
                   </div>
 
                   {/* 5. Grounded Vehicles Switch */}
-                  <div className="form-check form-switch mb-0">
+                  <div className="form-check form-switch mb-0 d-flex align-items-center gap-2">
                     <input
-                      className="form-check-input"
+                      className="form-check-input lounge-switch"
                       type="checkbox"
                       id="showGround"
                       checked={showGround}
                       onChange={(e) => setShowGround(e.target.checked)}
                     />
                     <label
-                      className="form-check-label small"
+                      className="form-check-label small lounge-label m-0"
                       htmlFor="showGround"
                     >
                       Show Ground Vehicles
@@ -308,21 +321,19 @@ export default function App() {
 
           {/* Right Panel: Flight Monitor with Details & Recent Tabs */}
           <div
-            className="floating-panel p-3 align-self-start"
+            className="lounge-panel p-3 align-self-start"
             style={{ width: "100%", maxWidth: "380px" }}
           >
-            <div className="d-flex align-items-center justify-content-between mb-2">
-              <h6 className="fw-bold mb-0">Flight Monitor</h6>
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <h6 className="mb-0 panel-title">Flight Monitor</h6>
               <button
-                className="btn btn-sm p-0 border-0 shadow-none text-dark"
+                className="btn btn-sm p-0 border-0 shadow-none lounge-text"
                 onClick={() => setIsDetailsCollapsed(!isDetailsCollapsed)}
                 aria-expanded={!isDetailsCollapsed}
                 aria-controls="details-collapse"
               >
                 <span
-                  className={`collapse-arrow ${
-                    isDetailsCollapsed ? "collapsed" : ""
-                  }`}
+                  className={`collapse-arrow ${isDetailsCollapsed ? "collapsed" : ""}`}
                 >
                   ▼
                 </span>
@@ -332,120 +343,116 @@ export default function App() {
             <Collapse in={!isDetailsCollapsed}>
               <div id="details-collapse">
                 {/* Tab Navigation Headers */}
-                <ul className="nav nav-tabs nav-fill mb-3 small">
-                  <li className="nav-item">
-                    <button
-                      type="button"
-                      className={`nav-link py-1 border-0 ${
-                        activeTab === "details"
-                          ? "active fw-bold border-bottom border-primary border-2"
-                          : "text-muted"
-                      }`}
-                      onClick={() => setActiveTab("details")}
-                    >
-                      Details
-                    </button>
-                  </li>
-                  <li className="nav-item">
-                    <button
-                      type="button"
-                      className={`nav-link py-1 border-0 ${
-                        activeTab === "recents"
-                          ? "active fw-bold border-bottom border-primary border-2"
-                          : "text-muted"
-                      }`}
-                      onClick={() => setActiveTab("recents")}
-                    >
-                      Recent Flights ({recentFlights.length})
-                    </button>
-                  </li>
-                </ul>
+                <div className="d-flex justify-content-around lounge-tabs-container mb-3">
+                  <button
+                    type="button"
+                    className={`lounge-tab ${activeTab === "details" ? "active" : ""}`}
+                    onClick={() => setActiveTab("details")}
+                  >
+                    Details
+                  </button>
+                  <button
+                    type="button"
+                    className={`lounge-tab ${activeTab === "recents" ? "active" : ""}`}
+                    onClick={() => setActiveTab("recents")}
+                  >
+                    Recent Flights ({recentFlights.length})
+                  </button>
+                </div>
 
                 <div className="tab-content">
                   {isLoading ? (
                     <div className="d-flex justify-content-center py-3">
                       <div
-                        className="spinner-border spinner-border-sm text-primary"
+                        className="spinner-border spinner-border-sm lounge-accent"
                         role="status"
                       />
                     </div>
                   ) : activeTab === "details" ? (
                     /* TAB 1: DETAILS PANEL */
-                    <>
-                      <div className="small mb-3 pb-2 border-bottom d-flex justify-content-between align-items-center">
-                        <span className="text-muted">Active Flights:</span>
-                        <span className="badge bg-primary rounded-pill font-monospace">
+                    <div className="lounge-details">
+                      <div className="small mb-3 pb-2 border-bottom border-secondary d-flex justify-content-between align-items-center">
+                        <span className="lounge-label">Active Flights:</span>
+                        <span className="badge lounge-badge">
                           {flights.length}
                         </span>
                       </div>
 
                       {selectedFlight ? (
                         <div className="flight-info-details small">
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <span className="fw-bold fs-6">
+                          <div className="d-flex justify-content-between align-items-center mb-3">
+                            <span className="fs-6 panel-title">
                               {selectedFlight.callsign || "N/A"}
                             </span>
-                            <span className="badge bg-secondary font-monospace">
+                            <span className="lounge-value">
                               {selectedFlight.icao24?.toUpperCase()}
                             </span>
                           </div>
 
-                          <ul className="list-group list-group-flush border-top border-bottom mb-3">
-                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
-                              <span className="text-muted">
+                          <ul className="list-unstyled mb-3 lounge-list">
+                            <li className="d-flex justify-content-between py-1">
+                              <span className="lounge-label fw-bold">
                                 Origin Country:
                               </span>
-                              <span className="fw-semibold text-end">
+                              <span className="lounge-value">
                                 {selectedFlight.originCountry || "Unknown"}
                               </span>
                             </li>
-                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
-                              <span className="text-muted">Coordinates:</span>
-                              <span className="font-monospace">
+                            <li className="d-flex justify-content-between py-1">
+                              <span className="lounge-label fw-bold">
+                                Coordinates:
+                              </span>
+                              <span className="lounge-value">
                                 {selectedFlight.latitude?.toFixed(4)}°,{" "}
                                 {selectedFlight.longitude?.toFixed(4)}°
                               </span>
                             </li>
-                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
-                              <span className="text-muted">Altitude:</span>
-                              <span className="font-monospace">
+                            <li className="d-flex justify-content-between py-1">
+                              <span className="lounge-label fw-bold">
+                                Altitude:
+                              </span>
+                              <span className="lounge-value">
                                 {selectedFlight.altitude != null
                                   ? `${selectedFlight.altitude.toLocaleString()} m`
                                   : "N/A"}
                               </span>
                             </li>
-                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
-                              <span className="text-muted">Velocity:</span>
-                              <span className="font-monospace">
+                            <li className="d-flex justify-content-between py-1">
+                              <span className="lounge-label fw-bold">
+                                Velocity:
+                              </span>
+                              <span className="lounge-value">
                                 {selectedFlight.velocity != null
                                   ? `${selectedFlight.velocity} m/s`
                                   : "N/A"}
                               </span>
                             </li>
-                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
-                              <span className="text-muted">Heading:</span>
-                              <span className="font-monospace">
+                            <li className="d-flex justify-content-between py-1">
+                              <span className="lounge-label fw-bold">
+                                Heading:
+                              </span>
+                              <span className="lounge-value">
                                 {selectedFlight.heading != null
                                   ? `${selectedFlight.heading}°`
                                   : "N/A"}
                               </span>
                             </li>
-                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
-                              <span className="text-muted">Vertical Rate:</span>
-                              <span className="font-monospace">
+                            <li className="d-flex justify-content-between py-1">
+                              <span className="lounge-label fw-bold">
+                                Vertical Rate:
+                              </span>
+                              <span className="lounge-value">
                                 {selectedFlight.verticalRate != null
                                   ? `${selectedFlight.verticalRate} m/s`
                                   : "N/A"}
                               </span>
                             </li>
-                            <li className="list-group-item d-flex justify-content-between px-0 py-1">
-                              <span className="text-muted">Status:</span>
+                            <li className="d-flex justify-content-between py-1">
+                              <span className="lounge-label fw-bold">
+                                Status:
+                              </span>
                               <span
-                                className={`badge ${
-                                  selectedFlight.onGround
-                                    ? "bg-warning text-dark"
-                                    : "bg-success"
-                                }`}
+                                className={`lounge-value ${selectedFlight.onGround ? "text-warning" : "text-success"}`}
                               >
                                 {selectedFlight.onGround
                                   ? "On Ground"
@@ -455,24 +462,24 @@ export default function App() {
                           </ul>
                         </div>
                       ) : (
-                        <div className="bg-light rounded border p-3 text-center text-muted small">
+                        <div className="p-3 text-center small lounge-label">
                           <p className="mb-0">
                             Click an aircraft on the map to view detailed flight
                             parameters.
                           </p>
                         </div>
                       )}
-                    </>
+                    </div>
                   ) : (
-                    /* TAB 2: RECENT FLIGHTS TABLE */
+                    /* TAB 2: RECENT FLIGHTS TABLE (Matches image_b4735d.png exactly) */
                     <div className="table-responsive small">
                       {recentFlights.length > 0 ? (
-                        <table className="table table-hover table-sm align-middle mb-0">
-                          <thead className="table-light">
+                        <table className="lounge-table w-100">
+                          <thead>
                             <tr>
-                              <th>ICAO24</th>
-                              <th>Country</th>
-                              <th className="text-end">Time</th>
+                              <th className="text-start fw-bold">ICA024</th>
+                              <th className="text-start fw-bold">Country</th>
+                              <th className="text-end fw-bold">Time</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -482,28 +489,25 @@ export default function App() {
                               return (
                                 <tr
                                   key={flight.icao24}
-                                  style={{ cursor: "pointer" }}
-                                  className={
-                                    isSelected ? "table-active fw-bold" : ""
-                                  }
+                                  className={isSelected ? "selected-row" : ""}
                                   onClick={() =>
                                     handleSelectFromRecents(flight)
                                   }
                                 >
-                                  <td className="font-monospace text-primary fw-bold">
+                                  <td className="text-start">
                                     {flight.icao24.toUpperCase()}
                                   </td>
-                                  <td>{flight.originCountry || "Unknown"}</td>
-                                  <td className="text-end font-monospace text-muted">
-                                    {timestamp}
+                                  <td className="text-start">
+                                    {flight.originCountry || "Unknown"}
                                   </td>
+                                  <td className="text-end">{timestamp}</td>
                                 </tr>
                               );
                             })}
                           </tbody>
                         </table>
                       ) : (
-                        <div className="bg-light rounded border p-3 text-center text-muted small">
+                        <div className="p-3 text-center small lounge-label">
                           <p className="mb-0">No recently selected flights.</p>
                         </div>
                       )}

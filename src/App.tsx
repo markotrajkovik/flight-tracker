@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useFlightEngine } from "./hooks/useFlightEngine";
 import "./App.css";
 import { MapRenderer } from "./components/MapRenderer";
 import { Collapse } from "react-bootstrap";
 import type { ProcessedFlight } from "./types/flights";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 export interface Flight {
   icao24: string;
@@ -42,14 +43,18 @@ export default function App() {
     setMaxVel,
     showGround,
     setShowGround,
+    isDebouncing,
   } = useFlightEngine();
 
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(false);
   const [isDetailsCollapsed, setIsDetailsCollapsed] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"details" | "recents">("details");
-  const [selectedFlight, setSelectedFlight] = useState<ProcessedFlight | null>(
-    null,
+  const [selectedIcao24, setSelectedIcao24] = useState<string | null>(null);
+
+  const selectedFlight = useMemo(
+    () => flights.find((f) => f.icao24 === selectedIcao24) ?? null,
+    [flights, selectedIcao24],
   );
   const [flyToFlight, setFlyToFlight] = useState<ProcessedFlight | null>(null);
   const [recentFlights, setRecentFlights] = useState<RecentFlightItem[]>([]);
@@ -82,7 +87,7 @@ export default function App() {
   };
 
   const handleSelectFromMap = (flight: ProcessedFlight | null) => {
-    setSelectedFlight(flight);
+    setSelectedIcao24(flight?.icao24 ?? null);
     setFlyToFlight(null);
     if (flight) {
       addToRecents(flight);
@@ -90,7 +95,7 @@ export default function App() {
   };
 
   const handleSelectFromRecents = (flight: ProcessedFlight) => {
-    setSelectedFlight(flight);
+    setSelectedIcao24(flight.icao24);
     setFlyToFlight(flight);
     addToRecents(flight);
   };
@@ -100,7 +105,7 @@ export default function App() {
       {/* Top Navbar */}
       <nav className="lounge-navbar px-4 shadow-sm" style={{ height: "56px" }}>
         <div className="nav-left">
-          <span className="mb-0 h5">FlightTrackerVeriGud</span>
+          <span className="mb-0 h5">Cosmic Console</span>
         </div>
         <div className="nav-center clock-text">
           {currentTime.toLocaleTimeString([], {
@@ -149,13 +154,26 @@ export default function App() {
             <div className="d-flex align-items-center justify-content-between mb-2">
               <div className="d-flex align-items-center gap-2">
                 <h6 className="mb-0 panel-title">Filters</h6>
-                <span
-                  className="info-icon badge rounded-pill"
-                  title="Filter visible aircraft by callsign, origin country, altitude range, velocity range, or ground status."
-                  style={{ cursor: "help", fontSize: "0.7rem" }}
-                >
-                  ?
-                </span>
+                <i
+                  className="bi bi-info-circle-fill ms-1 lounge-label"
+                  title="Filter visible aircraft by callsign, origin country, altitude range, velocity range, or ground status.
+                  Text filters match by containing characters, not starting or ending with."
+                  style={{ cursor: "help", fontSize: "0.85rem", opacity: 0.75 }}
+                />
+
+                {(isDebouncing || isLoading) && (
+                  <div
+                    className="spinner-border spinner-border-sm lounge-accent"
+                    role="status"
+                    style={{
+                      width: "0.85rem",
+                      height: "0.85rem",
+                      borderWidth: "1.5px",
+                    }}
+                  >
+                    <span className="visually-hidden">Filtering...</span>
+                  </div>
+                )}
               </div>
               <button
                 className="btn btn-sm p-0 border-0 shadow-none lounge-text"

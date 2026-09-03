@@ -87,9 +87,16 @@ export function MapRenderer({
         if (!response.ok) throw new Error("Failed to load track data");
 
         const data: WaypointsResponse = await response.json();
-        const latLngPositions: [number, number][] = data.path.map((point) => [
+        const trimmedPath = data.path.length > 4 ? data.path.slice(0, -4) : [];
+
+        const latLngPositions: [number, number][] = trimmedPath.map((point) => [
           point[1],
           point[2],
+        ]);
+
+        latLngPositions.push([
+          selectedFlight!.latitude,
+          selectedFlight!.longitude,
         ]);
 
         if (isMounted) {
@@ -106,7 +113,11 @@ export function MapRenderer({
     return () => {
       isMounted = false;
     };
-  }, [selectedFlight?.icao24]);
+  }, [
+    selectedFlight?.icao24,
+    selectedFlight?.latitude,
+    selectedFlight?.longitude,
+  ]);
 
   const handleDeselect = () => {
     onSelectFlight(null);
@@ -133,8 +144,19 @@ export function MapRenderer({
       return inView;
     }
 
-    return inView.sort((a, b) => b.velocity - a.velocity).slice(0, 100);
-  }, [flights, mapBounds]);
+    const sorted = [...inView].sort((a, b) => b.velocity - a.velocity);
+    const top100 = sorted.slice(0, 100);
+
+    if (
+      selectedFlight &&
+      !top100.some((f) => f.icao24 === selectedFlight.icao24)
+    ) {
+      top100.pop();
+      top100.push(selectedFlight);
+    }
+
+    return top100;
+  }, [flights, mapBounds, selectedFlight]);
 
   return (
     <MapContainer
@@ -151,7 +173,7 @@ export function MapRenderer({
       <MapBoundsTracker onBoundsChange={setMapBounds} />
 
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_2snj_1_196c405b6bfc9b8c8c02fcd1"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         detectRetina={true}
       />
@@ -179,7 +201,7 @@ export function MapRenderer({
             },
           }}
         >
-          <Popup className="lounge-popup">
+          <Popup className="lounge-popup" autoPan={false}>
             <div className="small">
               <div className="d-flex justify-content-between gap-3 my-1">
                 <span className="lounge-label fw-bold">Callsign:</span>

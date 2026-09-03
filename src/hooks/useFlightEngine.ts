@@ -15,6 +15,38 @@ export const useFlightEngine = () => {
   const [maxVel, setMaxVel] = useState(400);
   const [showGround, setShowGround] = useState(true);
 
+  // Debounced snapshot & spinner state
+  const [isDebouncing, setIsDebouncing] = useState(false);
+  const [debouncedFilters, setDebouncedFilters] = useState({
+    searchTerm,
+    originCountry,
+    minAlt,
+    maxAlt,
+    minVel,
+    maxVel,
+    showGround,
+  });
+
+  // Debounce timer for all filters (500ms delay)
+  useEffect(() => {
+    setIsDebouncing(true);
+
+    const timer = setTimeout(() => {
+      setDebouncedFilters({
+        searchTerm,
+        originCountry,
+        minAlt,
+        maxAlt,
+        minVel,
+        maxVel,
+        showGround,
+      });
+      setIsDebouncing(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, originCountry, minAlt, maxAlt, minVel, maxVel, showGround]);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -59,30 +91,24 @@ export const useFlightEngine = () => {
     };
   }, []);
 
+  // Filter computation using debounced state
   const filteredFlights = useMemo(() => {
     return flights.filter((flight) => {
       return (
-        flight.callsign.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        flight.callsign
+          .toLowerCase()
+          .includes(debouncedFilters.searchTerm.toLowerCase()) &&
         flight.originCountry
           .toLowerCase()
-          .includes(originCountry.toLowerCase()) &&
-        flight.altitude >= minAlt &&
-        flight.altitude <= maxAlt &&
-        flight.velocity >= minVel &&
-        flight.velocity <= maxVel &&
-        (showGround || !flight.onGround)
+          .includes(debouncedFilters.originCountry.toLowerCase()) &&
+        flight.altitude >= debouncedFilters.minAlt &&
+        flight.altitude <= debouncedFilters.maxAlt &&
+        flight.velocity >= debouncedFilters.minVel &&
+        flight.velocity <= debouncedFilters.maxVel &&
+        (debouncedFilters.showGround || !flight.onGround)
       );
     });
-  }, [
-    flights,
-    searchTerm,
-    originCountry,
-    minAlt,
-    maxAlt,
-    minVel,
-    maxVel,
-    showGround,
-  ]);
+  }, [flights, debouncedFilters]);
 
   return {
     flights: filteredFlights,
@@ -102,5 +128,6 @@ export const useFlightEngine = () => {
     showGround,
     setShowGround,
     isLoading,
+    isDebouncing, // Use this alongside `isLoading` in App.tsx for the spinner
   };
 };
